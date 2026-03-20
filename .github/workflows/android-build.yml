@@ -1,5 +1,5 @@
 name: Build-Android-Binary
-on: [push, workflow_dispatch] # 提交代码或手动点按钮都会触发
+on: [push, workflow_dispatch]
 
 jobs:
   build:
@@ -7,20 +7,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Install Dependencies
+      - name: Install Build Tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y libssl-dev pkg-config perl make
+          sudo apt-get install -y pkg-config perl make cmake
           
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-linux-android
           
-      - name: Build
+      - name: Build with Vendored OpenSSL
+        # 核心改动：在 env 里直接强制所有 openssl 相关的编译都走 vendored 模式
+        env:
+          OPENSSL_VENDORED: "1"
+          OPENSSL_NO_VENDOR: "0"
         run: |
           cargo install cargo-ndk
-          # 这里直接编译 CLI
+          # 注意：这里去掉了 --all-features，改用常规编译
+          # 这样可以避免某些不兼容的插件干扰
           cargo ndk -t arm64-v8a build --release -p openfang-cli
           
       - name: Upload Finished Binary
