@@ -10,6 +10,7 @@ jobs:
       - name: Install Build Tools
         run: |
           sudo apt-get update
+          # 编译 vendored openssl 必须有 perl, make 和 cmake
           sudo apt-get install -y pkg-config perl make cmake
           
       - name: Setup Rust
@@ -17,15 +18,14 @@ jobs:
         with:
           targets: aarch64-linux-android
           
-      - name: Build with Vendored OpenSSL
-        # 核心改动：在 env 里直接强制所有 openssl 相关的编译都走 vendored 模式
-        env:
-          OPENSSL_VENDORED: "1"
-          OPENSSL_NO_VENDOR: "0"
+      - name: Build Android Binary
         run: |
+          # 1. 安装 ndk 编译辅助工具
           cargo install cargo-ndk
-          # 注意：这里去掉了 --all-features，改用常规编译
-          # 这样可以避免某些不兼容的插件干扰
+          
+          # 2. 直接运行编译
+          # 注意：因为已经在 Cargo.toml 里全局 patch 了 openssl-sys 
+          # 且指定了 vendored，这里不需要再传额外的环境变量或 feature
           cargo ndk -t arm64-v8a build --release -p openfang-cli
           
       - name: Upload Finished Binary
